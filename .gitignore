@@ -4,7 +4,11 @@
 
 # Session Data files
 .RData
+.RProj
 .RDataTmp
+
+# Rmd
+.Rmd
 
 # User-specific files
 .Ruserdata
