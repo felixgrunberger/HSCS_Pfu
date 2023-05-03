@@ -8,8 +8,8 @@
 .RDataTmp
 
 # Rmd
-.Rmd
-
+*.Rmd
+/*.Rmd
 # User-specific files
 .Ruserdata
 
