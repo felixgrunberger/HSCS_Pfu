@@ -1,0 +1,43 @@
+---
+title: "Uncovering the temporal dynamics and regulatory networks of thermal stress response in a hyperthermophile using transcriptomics and proteomics"
+output:
+  github_document:
+    includes:
+      before_body: header.md
+    toc: true
+    toc_depth: 4
+  highlight: github
+link-citations: true
+always_allow_html: true
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+```
+
+***  
+
+### Repository organization
+
+This repository is organized as follows:
+
+- `raw_data/`: Contains raw data files for transcriptomics, proteomics, and Nanopore sequencing.
+- `processed_data/`: Stores processed data and intermediate files generated during the analysis.
+- `scripts/`: Contains the R code and other scripts used in the analysis.
+- `documentation/`: Includes detailed documentation, such as method descriptions and supplementary material.
+- `results/`: Stores final results, plots, and tables.
+
+### Software versions 
+
+### Citation
+If you find this work useful, please cite:
+
+
+### License
+
+This project is licensed under the [Name of License]. See the `LICENSE` file for more details.
+
