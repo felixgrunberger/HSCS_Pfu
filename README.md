@@ -25,6 +25,8 @@ Göttingen, Göttingen, Germany
 <sup>\*</sup> Present address: Max Planck Institute for Infection
 Biology, 10117 Berlin, Germany
 
+------------------------------------------------------------------------
+
 This repository contains bioinformatic analysis of the manuscript titled
 **Uncovering the temporal dynamics and regulatory networks of thermal
 stress response in a hyperthermophile using transcriptomics and
@@ -47,8 +49,6 @@ Nanopore PCR-cDNA sequencing
 
 - <a href="#repository-organization"
   id="toc-repository-organization">Repository organization</a>
-- <a href="#software-versions" id="toc-software-versions">Software
-  versions</a>
 - <a href="#data-availability" id="toc-data-availability">Data
   availability</a>
 - <a href="#funding" id="toc-funding">Funding</a>
@@ -66,16 +66,10 @@ Development](https://img.shields.io/badge/Maintenance%20Level-Actively%20Develop
 
 This repository is organized as follows:
 
-- `raw_data/`: Contains tables used for downstream differential gene and
-  protein expression analysis, and 3’ end analysis
-- `processed_data/`: Stores processed data and intermediate files
-  generated during the analysis
-- `scripts/`: Contains the R code and other scripts used in the
-  analysis.
-- `documentation/`: Includes detailed documentation, such as method
-  descriptions and plotting of figures.
-
-### Software versions
+- [`documentation/`](documentation): Includes detailed documentation,
+  such as method descriptions and plotting of
+- [`tables/`](tables): Contains tables used for downstream differential
+  gene and protein expression analysis, and 3’ end analysis
 
 ### Data availability
 

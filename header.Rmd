@@ -5,6 +5,7 @@ link-citations: true
 always_allow_html: true
 ---
 
+***
 This repository contains bioinformatic analysis of the manuscript titled **Uncovering the temporal dynamics and regulatory networks of thermal stress response in a hyperthermophile using transcriptomics and proteomics**. 
 
 \n

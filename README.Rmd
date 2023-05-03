@@ -42,12 +42,8 @@ The repository is currently actively developed.
 
 This repository is organized as follows:
 
-- `raw_data/`: Contains tables used for downstream differential gene and protein expression analysis, and 3' end analysis
-- `processed_data/`: Stores processed data and intermediate files generated during the analysis 
-- `scripts/`: Contains the R code and other scripts used in the analysis.
-- `documentation/`: Includes detailed documentation, such as method descriptions and plotting of figures.
-
-### Software versions 
+- [`documentation/`](documentation): Includes detailed documentation, such as method descriptions and plotting of
+- [`tables/`](tables): Contains tables used for downstream differential gene and protein expression analysis, and 3' end analysis
 
 ### Data availability 
 RNA sequencing data are available at the European Nucleotide Archive (ENA, https://www.ebi.ac.uk/ena) under project accession numbers [PRJEB61174](https://www.ebi.ac.uk/ena/browser/view/PRJEB61174) (RNA-seq data used for differential gene expression analysis) and [PRJEB61177](https://www.ebi.ac.uk/ena/browser/view/PRJEB61177) (Term-seq and Nanopore data).  
