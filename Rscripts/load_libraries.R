@@ -1,7 +1,7 @@
 # > libraries and functions needed for the analysis < #
 
 # libraries ----
-packages <- c("tidyverse", "ape", "data.table", "Rsubread", "readxl", "vroom", "limma","tictoc","ggsci",
+packages <- c("tidyverse", "ape", "data.table", "Rsubread", "readxl", "vroom", "limma","tictoc","ggsci","openxlsx",
               "DESeq2", "ggforce", "Biostrings", "ggseqlogo", "cowplot", "scico", "patchwork","ggridges",
               "ggalluvial", "janitor", "RColorBrewer", "colorspace", "ggpubr", "cowplot", "reshape2")
 invisible(lapply(packages, require, character.only = TRUE))

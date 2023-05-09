@@ -315,8 +315,9 @@ ggplot(ggad2,
   ylab(ad2$labels$y) 
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- --> After removal
-of the replicates, the count data were saved:
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+After removal of the replicates, the count data were saved:
 
 ``` r
 ### genes ####
@@ -496,6 +497,12 @@ vroom::vroom_write(comp_table_RNA,
         height as primary (highest peak within 300 bases downstream from
         a gene), secondary (each additional peak 300 bases downstream
         from a gene), and internal (each peak in the coding range).
+
+> You can find the R code used for 3’ end detection here:
+> [Rscripts/end3_detection.R](../Rscripts/end3_detection.R).
+
+> Primary 3’ends can be found in
+> [supplemental_tables/Supplementary_Table2.xlsx](../supplemental_tables/Supplementary_Table2.xlsx)..
 
 ### Coverage analysis of long Nanopore reads
 
