@@ -194,6 +194,11 @@ done
     the *P. furiosus* DSM 3638 GFF annotation file downloaded from NCBI
     for protein-coding genes (column biotype).
 
+> You can find the R code used for calculation of the count matrix
+> analysis under
+> [Rscripts/featurecounts.R](../Rscripts/featurecounts.R). The matrix is
+> saved under [data/Rdata](../data/Rdata).
+
 6.  Principal component analysis (PCA) was performed on variance
     stabilizing transformed (VST) data, and outlier replicates were
     removed from the dataset after visual inspection.
