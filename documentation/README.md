@@ -46,29 +46,159 @@ The following pipeline was used to analyze RNA-seq data:
     quality using fastp v. 0.23.2 to remove low-quality bases and
     adapter sequences (–cut_front –cut_tail -q 30).
 
+> To reproduce the results, you can download the gzipped RNA-seq fastq
+> data from the European Nucleotide Archive stored under project
+> accession number
+> [PRJEB61174](https://www.ebi.ac.uk/ena/browser/view/PRJEB61174) and
+> move them to the `"/path/to/working/directory/raw"` directory.
+
+Note that the working directory (`"/path/to/working/directory/`) refers
+to <https://github.com/felixgrunberger/HSCS_Pfu/data>.
+
+``` bash
+#!/bin/bash
+
+# Define the working directory
+ws="/path/to/working/directory"
+
+# Loop through all FASTQ files in the "raw" directory
+for file in "${ws}/raw*"/*.fastq.gz; do 
+  # Extract the filename without the path and extension
+  filename=$(basename "${file}" .fastq.gz)
+  
+  # Create the output directory if it doesn't exist
+  mkdir -p "${ws}/fastp_trimmed/"
+  
+  # Trim the reads using fastp (index primer 12 and 29 detected by FastQC)
+  fastp --cut_front --cut_tail -q 30 \
+        --adapter_fasta "${ws}/adapters/indexprimer.fa" \
+        -i "${file}" \
+        -o "${ws}/fastp_trimmed/${filename}_trimmed.fastq.gz"
+  
+  # Print a message when the trimming is finished
+  echo "${filename} trimming finished"
+done
+```
+
 2.  Ribosomal RNA reads were removed using sortmeRNA v. 4.3.6 based on
-    sequences in the SILVA database.  
+    sequences in the [SILVA database](https://www.arb-silva.de).
+
+``` bash
+#!/bin/bash
+
+# Set workspace directory
+ws="/path/to/workspace"
+
+# Create sortmerna index database
+indexdb_rna --ref \
+${ws}/silva/PFDSM3638_RS00585_16S.fasta,${ws}/silva/PFDSM3638_RS00585_16S-db \
+${ws}/silva/PFDSM3638_RS00595_23S.fasta,${ws}/silva/PFDSM3638_RS00595_23S-db \
+${ws}/silva/PFDSM3638_RS07475_5S.fasta,${ws}/silva/PFDSM3638_RS07475_5S-db \
+${ws}/silva/PFDSM3638_RS08510_5S.fasta,${ws}/silva/PFDSM3638_RS08510_5S-db
+
+# Loop over all fastq files in the specified directory
+for file in ${ws}/fastp_trimmed/*trimmed.fastq.gz
+do 
+  # Extract filename without extension
+  filename=$(basename "${file%.fastq.gz}")
+
+  # Create required directories
+  mkdir -p ${ws}/unpigz
+  mkdir -p ${ws}/sortmerna
+  mkdir -p ${ws}/sortmerna_log
+  
+  # Decompress fastq.gz file
+  unpigz --keep --stdout --decompress $file > ${ws}/unpigz/temp1.fastq
+
+  # Run sortmerna
+  sortmerna \
+  --threads 16 \
+  --ref ${ws}/silva/PFDSM3638_RS00585_16S-db \
+  --ref ${ws}/silva/PFDSM3638_RS00595_23S-db \
+  --ref ${ws}/silva/PFDSM3638_RS07475_5S-db \
+  --ref ${ws}/silva/PFDSM3638_RS08510_5S-db \
+  --reads ${ws}/unpigz/temp1.fastq \
+  --aligned ${ws}/sortmerna/"$filename"_rRNA \
+  --other ${ws}/sortmerna/"$filename"_RNA \
+  --fastx \
+  --log ${ws}/sortmerna_log/"$filename".log 
+
+  # Compress output file
+  pigz --best ${ws}/sortmerna/"$filename"_RNA.fq
+
+  # Clean up
+  rm ${ws}/sortmerna/"$filename"_rRNA.fq
+  rm -R ${ws}/unpigz
+  rm -R ${ws}/sortmerna
+
+  # Print message indicating that sortmerna has finished
+  echo $filename "sortmerna finished" 
+done
+```
 
 3.  The rRNA-depleted reads were aligned to the *Pyrococcus furiosus*
     DSM 3638 reference genome (NCBI: CP023154.1) using Bowtie2 v. 2.5.0
-    with default parameters.
+    with default parameters. The resulting sequence alignment files
+    (SAM) were converted to binary mapping format (BAM) using samtools.
 
-4.  The resulting sequence alignment files (SAM) were converted to
-    binary mapping format (BAM) using samtools.
+``` bash
+#!/bin/bash
 
-5.  Differentially expressed genes were identified using DESeq2 package
+# Set workspace directory
+ws="/path/to/workspace"
+
+# Build genome index
+bowtie2-build ${ws}/genome/GCF_008245085.1_ASM824508v1_genomic.fna ${ws}/genome/GCF_008245085.1_ASM824508v1_genomic
+    
+# Loop through all sorted and filtered rRNA reads files
+for file in ${ws}/sortmerna/*.fq.gz; do 
+    # Extract the file name and remove extension
+    filename=$(basename "$file")
+    short=$(echo $filename | sed s/"_trimmed_RNA"//)
+  
+    # Create directory for mapped files
+    mkdir -p ${ws}/mapped/${short}
+  
+    # Align reads to reference genome using Bowtie2
+    bowtie2 --threads 16 \
+        -x ${ws}/genome/GCF_008245085.1_ASM824508v1_genomic \
+        -U $file \
+        -S ${ws}/mapped/${short}/${short}.sam 2>${ws}/mapped/${short}/${short}.log
+  
+    # Convert SAM file to BAM file and filter by mapping quality
+    samtools view -@ 16 -bS ${ws}/mapped/${short}/${short}.sam \
+        > ${ws}/mapped/${short}/${short}.bam
+    samtools view -@ 16 -b -q 5 ${ws}/mapped/${short}/${short}.bam \
+        > ${ws}/mapped/${short}/${short}.filtered.bam
+  
+    # Sort the filtered BAM file and create index
+    samtools sort -@ 16 ${ws}/mapped/${short}/${short}.filtered.bam \
+        -o ${ws}/mapped/${short}/${short}.sorted.bam
+    samtools index -@ 16 ${ws}/mapped/${short}/${short}.sorted.bam
+
+    # Remove temporary files
+    rm ${ws}/mapped/${short}/${short}.sam
+    rm ${ws}/mapped/${short}/${short}.bam
+    rm ${ws}/mapped/${short}/${short}.filtered.bam
+
+    # Print a message indicating that mapping is finished for the current file
+    echo "Mapping for ${short} is finished."
+done
+```
+
+4.  Differentially expressed genes were identified using DESeq2 package
     following the recommendations in the Bioconductor vignette.
 
-6.  FeatureCounts from RSubread package v. 2.10.5 was used to calculate
+5.  FeatureCounts from RSubread package v. 2.10.5 was used to calculate
     the count matrix based on a custom GTF file generated by filtering
     the *P. furiosus* DSM 3638 GFF annotation file downloaded from NCBI
     for protein-coding genes (column biotype).
 
-7.  Principal component analysis (PCA) was performed on variance
+6.  Principal component analysis (PCA) was performed on variance
     stabilizing transformed (VST) data, and outlier replicates were
     removed from the dataset after visual inspection.
 
-8.  Differential expression analysis was conducted by comparing each of
+7.  Differential expression analysis was conducted by comparing each of
     the cold or heat shock conditions with the control condition in a
     pairwise manner.
 

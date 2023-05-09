@@ -1,0 +1,22 @@
+{
+    "index_version": 4,
+    "reference_gfa": [
+        "/Volumes/EX_SSD/HeatCold_RNAseq/data/genome/pfu_index"
+    ],
+    "sampling_type": "dense",
+    "k": 31,
+    "num_kmers": 1664474,
+    "num_contigs": 2344,
+    "seq_length": 1734794,
+    "have_ref_seq": true,
+    "have_edge_vec": false,
+    "SeqHash": "86dc7ff878010d01985112c77b65cc0ce03569c10a79e50ed1138ac020e67982",
+    "NameHash": "6528c589359b0839e03b134ff197227552258c1d58df16be9e6aacf10f4210d7",
+    "SeqHash512": "8fb1a97357d52a962eae072d023c7141dd5d75dee2ecb8c73abf5ecb76903481a37c04d43d7968d6c935979bba6d7ba32f686c16da97abf8d911ea48f0cfa678",
+    "NameHash512": "8ceaa2563ba1ac8daafe1f29d4624c6ee9f8e697ebc3d7ac03960faad34e7adf8265b6167133bad4f5a8dd807d944c5a691da94df6e40060ca15e07950122549",
+    "DecoySeqHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "DecoyNameHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "num_decoys": 0,
+    "first_decoy_index": 18446744073709551615,
+    "keep_duplicates": false
+}
