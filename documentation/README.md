@@ -203,9 +203,257 @@ done
     stabilizing transformed (VST) data, and outlier replicates were
     removed from the dataset after visual inspection.
 
+``` r
+# load libraries ----
+library(here)
+source(here("Rscripts/load_libraries.R"))
+
+# data ----
+## read in DESeq object ====
+load(here("data/Rdata/dds_start.Rdata"))
+
+## normalisation ====
+vsd <- vst(dds, blind=FALSE)
+
+# remove outliers after plotting ----
+## PCA ===
+ad <- plotPCA(vsd,intgroup = c("Condition", "bio_rep"))
+ggad <- as_tibble(ad$data) 
+
+ggplot(ggad, 
+       aes(x = PC1, y = PC2, fill = Condition, group = Condition, 
+           shape = as.factor(bio_rep))) +
+  geom_mark_ellipse(aes(color = Condition, group = Condition), 
+                    alpha = 0.25) +
+  geom_point(size = 4, color = "black") +
+  scale_shape_manual(values = c(21, 22, 23, 24), name = "Replicate") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))),
+         shape = guide_legend(override.aes=list(shape=c(21,22,23,24),
+                                                fill = "white"))) +
+  theme_linedraw() +
+  scale_color_manual(values = batlow_custom) +
+  scale_fill_manual(values = batlow_custom) +
+  theme(panel.grid.minor = element_blank()) +
+  xlab(ad$labels$x) +
+  ylab(ad$labels$y)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+After visual inspection the following replicates were removed and a new
+DESeq object created.
+
+``` r
+## sample ids ====
+sample_ids    <- read_xlsx(here("data/samples/sample_id_info.xlsx")) %>%
+  dplyr::mutate(Condition = case_when(Condition == "CS_short" ~ "CS1",
+                                      Condition == "CS_middle" ~ "CS2",
+                                      Condition == "CS_long" ~ "CS3",
+                                      Condition == "CS_Rec_short" ~ "CSR",
+                                      Condition == "Ctrl" ~ "Ctrl",
+                                      Condition == "HS1" ~ "HS1",
+                                      Condition == "HS2" ~ "HS2",
+                                      Condition == "HS3" ~ "HSR")) 
+
+### load pre-calculated featurecounts object ====
+load(here("data/Rdata/featurecounts_rnaseq.Rdata"))
+sample_design <- colnames(counts)
+
+## remove replicates after PCA ====
+remove_rna_samples <- data.table(Condition = c("HS1", "HS2", "HSR", "CSR"),
+                                 bio_rep = c(1, 4, 1, 2),
+                                 remove = T) %>%
+  left_join(sample_ids, multiple = "all") %>%
+  dplyr::select(sample_ids) %>%
+  deframe()
+
+## Start again from PCA ====
+colDataRaw2 <- data.table(sample_ids = sample_design) %>%
+  left_join(sample_ids) %>%
+  dplyr::filter(!is.na(Condition),
+                !sample_ids %in% remove_rna_samples) 
+
+## DESeq object ====
+### calc DESeq2 ####
+dds2 <- DESeq2::DESeqDataSetFromMatrix(countData = counts[,colnames(counts) %in% colDataRaw2$sample_ids], 
+                                       colData = colDataRaw2,
+                                       design = ~Condition)
+
+dds2 <- dds2[rowSums(counts(dds2)) > 1,]
+dds_adjusted2 <- estimateSizeFactors(dds2)
+
+### get normalized counts table ####
+normalized_counts2 <- counts(dds_adjusted2, normalized = T)
+vroom_write(normalized_counts2 %>%
+              as.data.frame() %>%
+              rownames_to_column("gene"), 
+            here("data/Rdata/deseq_normalized_counts.tsv"))
+
+### normalization ####
+vsd2 <- vst(dds2, blind = FALSE)
+ad2 <- plotPCA(vsd2,intgroup = c("Condition", "bio_rep"))
+ggad2 <- as_tibble(ad2$data) 
+
+# plot ----
+ggplot(ggad2, 
+       aes(x = PC1, y = PC2, fill = Condition, group = Condition, 
+           shape = as.factor(bio_rep))) +
+  geom_mark_ellipse(aes(color = Condition, group = Condition), 
+                    alpha = 0.25) +
+  geom_point(size = 4, color = "black") +
+  scale_shape_manual(values = c(21, 22, 23, 24), name = "Replicate") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))),
+         shape = guide_legend(override.aes=list(shape=c(21,22,23,24),
+                                                fill = "white"))) +
+  theme_linedraw() +
+  scale_color_manual(values = batlow_custom) +
+  scale_fill_manual(values = batlow_custom) +
+  scale_x_continuous(expand = c(.2,0)) +
+  scale_y_continuous(expand = c(.2,0)) +
+  theme(panel.grid.minor = element_blank()) +
+  xlab(ad2$labels$x) +
+  ylab(ad2$labels$y) 
+```
+
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- --> After removal
+of the replicates, the count data were saved:
+
+``` r
+### genes ####
+pfu_gff <- read.gff(here("data/genome/GCF_008245085.1_ASM824508v1_genomic.gff")) %>%
+  dplyr::filter(type == "gene") %>%
+  dplyr::mutate(locus_tag = str_split_fixed(str_split_fixed(attributes, ";old_",2)[,1],"locus_tag=",2)[,2],
+                old_locus_tag = str_split_fixed(attributes, "old_locus_tag=",2)[,2],
+                width = abs(start-end),
+                biotype = str_split_fixed(str_split_fixed(attributes, "gene_biotype=",2)[,2],";locus_tag=",2)[,1]) %>%
+  dplyr::filter(biotype == "protein_coding") %>%
+  dplyr::select(locus_tag,old_locus_tag,start, end, strand,width, biotype)
+
+### save unnormalized counts ####
+counts_remBad <- counts[,colnames(counts) %in% colDataRaw2$sample_ids]
+save(counts_remBad,
+     file = here("data/Rdata/featurecounts_rnaseq_remBad.Rdata"))
+
+### save unnormalized counts ####
+featurecounts_rem_bad_table <- counts_remBad %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(-gene, names_to = "set", values_to = "counts") %>%
+  left_join(sample_ids, by = c("set" = "sample_ids")) %>%
+  left_join(pfu_gff, by = c("gene" = "locus_tag")) %>%
+  group_by(Condition, gene) %>%
+  summarise(Mean_counts = mean(counts, na.rm = T))
+save(featurecounts_rem_bad_table,
+     file = here("data/Rdata/featurecounts_rem_bad_table.Rdata"))
+
+### save TPM normalized counts ####
+normalized_counts_rem_bad_table <- normalized_counts2 %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(-gene, names_to = "set", values_to = "counts") %>%
+  left_join(sample_ids, by = c("set" = "sample_ids")) %>%
+  left_join(pfu_gff %>%
+              dplyr::rename(gene = locus_tag), multiple = "all") %>%
+  mutate(rpk = counts/(width/1000)) %>%
+  group_by(set) %>%
+  mutate(scaling_factor = sum(rpk, na.rm = T)/1000000) %>%
+  ungroup() %>%
+  mutate(tpm = rpk/scaling_factor) %>%
+  group_by(Condition, gene) %>%
+  summarise(Mean_tpm = mean(tpm, na.rm = T))
+save(normalized_counts_rem_bad_table,
+     file = here("data/Rdata/normalized_counts_rem_bad_table.Rdata"))
+```
+
 7.  Differential expression analysis was conducted by comparing each of
     the cold or heat shock conditions with the control condition in a
     pairwise manner.
+
+``` r
+# functions ----
+diff_exp <- function(selector, counts_input = counts_remBad, colData_input = colDataRaw2){
+  
+  sample_info_select1 <- sample_ids %>% 
+    dplyr::filter(Condition %in% "Ctrl")
+  
+  sample_info_select2 <- sample_ids %>% 
+    dplyr::filter(Condition %in% wanted[selector])
+  
+  templist1 <- which(stringr::str_detect(string = colnames(counts_input), pattern = paste(sample_info_select1$sample_ids,collapse = "|")))
+  templist2 <- which(stringr::str_detect(string = colnames(counts_input), pattern = paste(sample_info_select2$sample_ids,collapse = "|")))
+  
+  dds_obj <- DESeq2::DESeqDataSetFromMatrix(countData = counts_input[,c(templist1,templist2)], 
+                                            colData = colData_input[c(templist1,templist2),],
+                                            design = ~Condition) %>%
+    DESeq()
+  
+  
+  res_final <- lfcShrink(dds_obj, 
+                         coef = resultsNames(dds_obj)[2], 
+                         type = "apeglm") %>%
+    as.data.frame() %>%
+    rownames_to_column("gene") %>%
+    mutate(comp = resultsNames(dds_obj)[2],
+           set1 = str_split_fixed(str_remove_all(comp, "Condition_"),"_vs_", 2)[,1],
+           set2 = str_split_fixed(str_remove_all(comp, "Condition_"),"_vs_", 2)[,2],
+           log2FoldChange = case_when(set1 == "Ctrl" ~ -log2FoldChange,
+                                      set1 != "Ctrl" ~ log2FoldChange,
+                                      set2 == "Ctrl" ~ log2FoldChange,
+                                      set2 != "Ctrl" ~ -log2FoldChange),
+           padj = if_else(!is.na(padj), padj, 1),
+           pvalue = if_else(!is.na(pvalue), pvalue, 1),
+           typeReg = ifelse(log2FoldChange > 0 & padj < 0.05, "up", 
+                            ifelse(log2FoldChange < 0 & padj < 0.05, "down",
+                                   ifelse(is.na(padj), "up","not significant")))) %>%
+    dplyr::rename(log2FC = log2FoldChange)
+  
+  return(res_final)
+}
+
+# data ----
+## genome annotation file ====
+pfu_gff <- read.gff(here("data/genome/GCF_008245085.1_ASM824508v1_genomic.gff")) %>%
+  dplyr::filter(type == "gene") %>%
+  dplyr::mutate(locus_tag = str_split_fixed(str_split_fixed(attributes, ";old_",2)[,1],"locus_tag=",2)[,2],
+                old_locus_tag = str_split_fixed(attributes, "old_locus_tag=",2)[,2],
+                width = abs(start-end),
+                biotype = str_split_fixed(str_split_fixed(attributes, "gene_biotype=",2)[,2],";locus_tag=",2)[,1]) %>%
+  dplyr::filter(biotype == "protein_coding") %>%
+  dplyr::select(locus_tag,old_locus_tag,start, end, strand,width, biotype)
+
+pfu_arcog <- vroom(here("data/genome/arcog_pfu_table_new.txt"))
+
+pfu_annotation <- pfu_gff %>%
+  left_join(pfu_arcog, by = c("old_locus_tag" = "new")) 
+
+pfu_annotation_small <- pfu_annotation %>%
+  distinct(locus_tag, .keep_all = T) %>%
+  dplyr::rename(pf_name = Synonym,
+                description = name) %>%
+  dplyr::select(locus_tag, old_locus_tag, pf_name, description)
+vroom_write(pfu_annotation_small, here("data/Rdata/pfu_annotation_small.tsv"))
+
+## RNAseq ====
+### load counts table ####
+load(here("data/Rdata/featurecounts_rnaseq_remBad.Rdata"))
+
+### run through all sets ####
+wanted <- levels(as.factor(sample_ids$Condition))
+wanted <- wanted[!wanted %in% c("Ctrl")]
+rna_diff <- pmap_dfr(list(1:length(wanted)), diff_exp)
+
+rna_diff_f <- rna_diff %>%
+  dplyr::mutate(Condition = if_else(set1 != "Ctrl", set1, set2)) %>%
+  left_join(pfu_annotation_small, by = c("gene" = "locus_tag")) %>%
+  distinct()
+
+comp_table_RNA <- rna_diff %>%
+  dplyr::mutate(Condition = if_else(set1 != "Ctrl", set1, set2)) %>%
+  dplyr::select(gene, log2FC, padj, typeReg, Condition)
+
+vroom::vroom_write(comp_table_RNA, 
+                   file = here("data/Rdata/comp_table_RNA.tsv"))
+```
 
 ### Identification of enriched 3’ ends from Term-seq data
 

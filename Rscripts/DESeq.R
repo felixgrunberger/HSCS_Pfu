@@ -83,6 +83,8 @@ dds <- DESeq2::DESeqDataSetFromMatrix(countData = counts[,colnames(counts) %in% 
                                       design = ~Condition)
 
 dds <- dds[rowSums(counts(dds)) > 1,]
+save(dds, file = here("data/Rdata/dds_start.Rdata"))
+
 dds_adjusted <- estimateSizeFactors(dds)
 
 ### get normalized counts table ####
