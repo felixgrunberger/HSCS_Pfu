@@ -634,11 +634,34 @@ formula:
 This method ensures that the sum of all TPM values in each sample is the
 same, facilitating comparison of gene expression levels between samples.
 
+``` r
+### save TPM normalized counts ####
+normalized_counts_rem_bad_table <- normalized_counts2 %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(-gene, names_to = "set", values_to = "counts") %>%
+  left_join(sample_ids, by = c("set" = "sample_ids")) %>%
+  left_join(pfu_gff %>%
+              dplyr::rename(gene = locus_tag), multiple = "all") %>%
+  mutate(rpk = counts/(width/1000)) %>%
+  group_by(set) %>%
+  mutate(scaling_factor = sum(rpk, na.rm = T)/1000000) %>%
+  ungroup() %>%
+  mutate(tpm = rpk/scaling_factor) %>%
+  group_by(Condition, gene) %>%
+  summarise(Mean_tpm = mean(tpm, na.rm = T))
+save(normalized_counts_rem_bad_table,
+     file = here("data/Rdata/normalized_counts_rem_bad_table.Rdata"))
+```
+
 #### arCOG enrichment analyis
 
 1.  For functional enrichment analysis based on the Archaeal Clusters of
     Orthologous Genes (arCOG), arCOGs for *P. furiosus* were retrieved
-    from <ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/>
+    from <ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/>.
+
+> Additional data (arcog annotation) can be found in the
+> [`data/genome`](../data/genome) folder.
 
 2.  Gene set enrichment analysis performed with the
     [goseq](https://bioconductor.org/packages/release/bioc/html/goseq.html)
@@ -649,6 +672,180 @@ same, facilitating comparison of gene expression levels between samples.
     genes were separately calculated for up- and downregulated genes
     based on RNA-seq and MS data, respectively. Significantly enriched
     terms were identified with a cutoff of 0.05.
+
+The analysis is exemplarily shown for HS1:
+
+``` r
+# load libraries ----
+library(here)
+source(here("Rscripts/load_libraries.R"))
+
+# functions ----
+calc_goseq_results_prior <- function(input_type, input_Cond, interested_type, arcog_table = pfu_arcog, annotation_table = pfu_annotation){
+  
+  if(input_type == "RNA"){
+    complete_set <- comp_table_RNA_fcgrp
+  }else{
+    complete_set <- comp_table_MS
+  }
+  
+  
+  complete_set <- complete_set %>%
+    dplyr::distinct(gene, Condition, .keep_all = T) %>%
+    dplyr::filter(!is.na(gene)) %>%
+    dplyr::filter(Condition %in% input_Cond)
+  
+  # > all genes 
+  assayed.genes <- complete_set %>%
+    dplyr::distinct(gene, .keep_all = T) %>%
+    dplyr::select(gene) %>%
+    deframe() 
+  
+  # > get differentially expressed genes
+  de.genes      <- complete_set %>%
+    dplyr::distinct(gene, .keep_all = T) %>%
+    dplyr::filter(typeReg %in% interested_type) %>%
+    dplyr::select(gene) %>%
+    deframe()
+  
+  # > get de-genes and background set in a list
+  gene.vector=as.integer(assayed.genes%in%de.genes)
+  names(gene.vector)=assayed.genes
+  
+  # > add length information for calculations
+  lengthGenes <- complete_set %>%
+    left_join(annotation_table %>%
+                distinct(locus_tag, .keep_all = T), 
+              by = c("gene" = "locus_tag")) %>%
+    distinct(gene, .keep_all = T) %>%
+    dplyr::mutate(width = Length) %>%
+    dplyr::select(width) %>%
+    deframe()
+  
+  # > calc arcog enrichment
+  pwf <- goseq::nullp(gene.vector, bias.data = lengthGenes,'ensGene',plot.fit=FALSE)
+  
+  # > add arcog identifier
+  category_mapping <- arcog_table %>%
+    left_join(pfu_annotation %>%
+                dplyr::select(locus_tag, old_locus_tag) %>%
+                distinct(locus_tag, .keep_all = T), 
+              by = c("new" = "old_locus_tag")) %>%
+    dplyr::rename(arCOG = COG.x) %>%
+    dplyr::filter(locus_tag %in% names(gene.vector)) %>%
+    dplyr::select(locus_tag, arCOG) %>%
+    as.data.frame()
+  
+  category.vector <- category_mapping$arCOG
+  names(category.vector) <- as.factor(category_mapping$locus_tag)
+  
+  goseq_results <- goseq::goseq(pwf, gene2cat = category_mapping, use_genes_without_cat=TRUE) %>%
+    as_tibble() %>%
+    mutate(regType = interested_type,
+           Condition = paste0(interested_type,"_", input_Cond)) %>%
+    left_join(arcog_info, by = c("category" = "arcog_cat")) %>%
+    dplyr::mutate(expected = numInCat*sum(numDEInCat)/sum(numInCat),
+                  deviation_from_expected = numDEInCat/expected)
+  
+  return(goseq_results)
+}
+
+plot_heatmap_arcog <- function(input, set, sig_value){
+
+  my_colors <- colorRampPalette(c("#F9F9F9", "#CEC9EC", "#ABA0DE", "#8B79D3", "#6B5DA5", "#4D4573", "#312D44"))
+  
+  ggplot(data = input %>%
+           dplyr::mutate(plot_cat = paste0(arcog_cat_big, "_", plot_order,"_",category),
+                         facet = ifelse(str_detect(Condition, "CS"), "cold", "hot"),
+                         circle_color = case_when(-log10(over_represented_pvalue) > (max(-log10(over_represented_pvalue))/2) ~ "white",
+                                                  .default = "black")),
+         aes(y = fct_rev(plot_cat), 
+             x = Condition, 
+             fill = -log10(over_represented_pvalue), 
+             size = numDEInCat, shape = over_represented_pvalue < sig_value)) +
+    geom_tile(color = "black", size = 0.2) +
+    geom_point(aes(color = circle_color), stroke = 0.5) +
+    scale_shape_manual(values = c(NA,21)) +
+    theme_light() +
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank()) +
+    ggtitle(set)  +
+    coord_equal() +
+    scale_fill_gradientn(colours = my_colors(100)) +
+    scale_color_manual(values = c("black", "white")) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+          axis.ticks = element_blank()) +
+    scale_x_discrete(expand = c(0,0)) +
+    scale_y_discrete(expand = c(0,0)) +
+    guides(shape = "none", color = "none") +
+    xlab("") +
+    ylab("")
+}
+
+# data ----
+## annotation ====
+pfu_arcog  <- vroom(here("data/genome/arcog_pfu_table_new.txt"))
+arcog_info <- vroom(here("data/genome/funclass.tab.txt"), col_names = F) %>%
+  dplyr::select(-2) %>%
+  dplyr::rename(category = 1, category_name = 2) %>%
+  dplyr::mutate(big_category = ifelse(category %in% 1:4, category, NA),
+                big_category_name = ifelse(category %in% 1:4, category_name, NA)) %>%
+  fill(big_category,.direction = "down") %>%
+  fill(big_category_name,.direction = "down") %>%
+  dplyr::filter(!category %in% 1:4) %>%
+  dplyr::rename(arcog_cat = 1, 
+                arcog_cat_name = 2,
+                arcog_cat_big = 3,
+                arcog_cat_big_name = 4) %>%
+  dplyr::mutate(plot_order = c("03","04","02","01","05",
+                               "06","07","08","09","10","11","12","13","14","15","16",
+                               "17","18","19","20","21","22","23","24",
+                               "25","26"))
+## add to genome annotation ====
+pfu_annotation <- pfu_gff %>%
+  left_join(pfu_arcog, by = c("old_locus_tag" = "new")) %>%
+  left_join(arcog_info, by = c("COG.x" = "arcog_cat")) 
+
+## RNA-seq data ====
+comp_table_RNA <- vroom(here("data/Rdata/comp_table_RNA.tsv"))
+comp_table_RNA_fcgrp <- comp_table_RNA %>%
+  dplyr::mutate(typeReg = case_when((padj < 0.05 & log2FC >= 1) ~ "up_high",
+                                    (padj < 0.05 & log2FC > 0 & log2FC < 1) ~ "up_norm",
+                                    (padj < 0.05 & log2FC <= -1) ~ "down_high",
+                                    (padj < 0.05 & log2FC < 0 & log2FC > -1) ~ "down_norm",
+                                    (padj >= 0.05) ~ "else",
+                                    .default = "else"),
+                typeReg = factor(typeReg, levels = c("up_high", "up_norm", "else", "down_norm", "down_high")),
+                padj = case_when(padj == 0 ~ min(padj[padj != 0]),
+                                 .default = padj))
+
+## goseq ====
+### Up, heat, RNAseq ####
+conds <- c("HS1")
+arcog_rna_up_high <- pmap_dfr(list("RNA", conds, "up_high"),
+                              calc_goseq_results_prior)
+arcog_rna_up_norm <- pmap_dfr(list("RNA", conds, "up_norm"),
+                              calc_goseq_results_prior)
+arcog_rna_else <- pmap_dfr(list("RNA", conds, "else"),
+                              calc_goseq_results_prior)
+
+### Down, heat, RNAseq ####
+arcog_rna_down_high <- pmap_dfr(list("RNA", conds, "down_high"),
+                           calc_goseq_results_prior)
+arcog_rna_down_norm <- pmap_dfr(list("RNA", conds, "down_norm"),
+                                calc_goseq_results_prior)
+
+#### HS1 up and down #####
+hs1_set_arcog <- bind_rows(arcog_rna_up_high,arcog_rna_up_norm,
+                           arcog_rna_else,
+                           arcog_rna_down_high, arcog_rna_down_norm)
+
+# plot ----
+plot_heatmap_arcog(hs1_set_arcog,
+                   "HS1 RNA", 0.05)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 #### Promoter and terminator analysis
 

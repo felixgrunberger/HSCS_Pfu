@@ -1,0 +1,30 @@
+1	1	INFORMATION STORAGE AND PROCESSING
+J	1	Translation, ribosomal structure and biogenesis
+A	1	RNA processing and modification
+K	1	Transcription
+L	1	Replication, recombination and repair
+B	1	Chromatin structure and dynamics
+2	2	CELLULAR PROCESSES AND SIGNALING
+D	2	Cell cycle control, cell division, chromosome partitioning
+Y	2	Nuclear structure
+V	2	Defense mechanisms
+T	2	Signal transduction mechanisms
+M	2	Cell wall/membrane/envelope biogenesis
+N	2	Cell motility
+Z	2	Cytoskeleton
+W	2	Extracellular structures
+U	2	Intracellular trafficking, secretion, and vesicular transport
+O	2	Posttranslational modification, protein turnover, chaperones
+X	2	Mobilome: prophages, transposons
+3	3	METABOLISM
+C	3	Energy production and conversion
+G	3	Carbohydrate transport and metabolism
+E	3	Amino acid transport and metabolism
+F	3	Nucleotide transport and metabolism
+H	3	Coenzyme transport and metabolism
+I	3	Lipid transport and metabolism
+P	3	Inorganic ion transport and metabolism
+Q	3	Secondary metabolites biosynthesis, transport and catabolism
+4	4	POORLY CHARACTERIZED
+R	4	General function prediction only
+S	4	Function unknown
