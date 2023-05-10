@@ -853,7 +853,9 @@ plot_heatmap_arcog(hs1_set_arcog,
 
 1.  Primary transcription start sites (TSS) and corresponding 5’ UTR
     lengths were extracted from the supplementary table in
-    <https://www.frontiersin.org/articles/10.3389/fmicb.2019.01603/full>
+    <https://www.frontiersin.org/articles/10.3389/fmicb.2019.01603/full>.
+    You can also find the table under
+    [`/data/genome/TSS_MasterTable.tsv`](../data/genome/TSS_MasterTable.tsv)
 
 2.  Genes were categorized based on the presence of an archaeal-typical
     promoter motif containing a TFB-recognition element (BRE) and a TATA
@@ -897,16 +899,20 @@ samples (pairwise complete).
 
 Principal component analysis (PCA) was performed on the z-score
 normalized log2 fold changes of RNA and protein values using the prcomp
-function in R.  
-1. Pairwise Euclidean distances between samples were calculated from the
-PCA results and used to perform hierarchical clustering with the ward.D2
-linkage method.
+function in R.
+
+1.  Pairwise Euclidean distances between samples were calculated from
+    the PCA results and used to perform hierarchical clustering with the
+    ward.D2 linkage method.
 
 2.  The number of clusters was determined using the elbow method and
     enrichment analysis of arCOG categories. This allowed identification
     of clusters of genes with similar expression patterns across
     different conditions and datasets, providing insights into the
-    regulation of cellular processes in Pyrococcus furiosus.
+    regulation of cellular processes in *Pyrococcus furiosus*.
+
+> The analysis can be found in
+> [`Rscripts/clustering.R`](../Rscripts/clustering.R).
 
 For downstream analysis: - The codon adaptation index (CAI) was computed
 using the CAI function from the coRdon package. The 5% most abundant
