@@ -66,10 +66,15 @@ Development](https://img.shields.io/badge/Maintenance%20Level-Actively%20Develop
 
 This repository is organized as follows:
 
+- [`Rscripts/`](Rscripts): R code used for the analysis. Description in
+  `documentation`
+- [`data/`](data): Contains intermediate data stored in `Rdata` objects,
+  and additional sets used during analysis (genome, TSS, TTS)
 - [`documentation/`](documentation): Includes detailed documentation,
-  such as method descriptions and plotting of
-- [`tables/`](tables): Contains tables used for downstream differential
-  gene and protein expression analysis, and 3’ end analysis
+  such as method descriptions and description of R code  
+- [`supplemental tables/`](supplemental%20tables): Contains tables S1-S4
+  used for downstream differential gene and protein expression analysis,
+  3’ end analysis and final summary table
 
 ### Data availability
 

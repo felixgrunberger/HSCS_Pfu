@@ -536,6 +536,10 @@ vroom::vroom_write(comp_table_RNA,
     for each position of the two replicates, and plotting, was performed
     using the Tidyverse in R.
 
+> You can find the R code used for operon coverage analysis using
+> long-read Nanopore data here:
+> [Rscripts/ont_operon.R](../Rscripts/ont_operon.R).
+
 ### Differential protein expression analysis using `limma`
 
 1.  Quantitative values were log2-transformed and subjected to PCA for
@@ -543,9 +547,78 @@ vroom::vroom_write(comp_table_RNA,
     1, CS 3 replicate 4, CS R replicate 2, HS 2 replicate 3, HS R
     replicate 1) after visual inspection.
 
+``` r
+# data ----
+## load MS quantities saved in Table S3 ====
+xl_file <- read_xlsx(here("supplemental_tables/Supplementary_Table_3.xlsx"), sheet = "QUANTITY")
+
+## log2 transform count data ====
+### counts ####
+counts_MS <- xl_file[,-c(1:4)]
+
+### extract Condition & Replicate from col name ####
+ms_sample_info <- data.table(run_label = colnames(counts_MS)) %>%
+  dplyr::mutate(Condition = str_remove_all(str_split_fixed(run_label, "_biorep", 2)[,1],"_"),
+                bio_rep = str_split_fixed(str_split_fixed(run_label, "_biorep", 2)[,2], "_",2)[,1])
+
+### log2 ####
+ex <- log2(counts_MS)
+
+### calc PCA ####
+pca <- prcomp(t(ex), center = TRUE, scale. = FALSE)
+
+pca_tibble <- pca$x %>%
+  as.data.frame() %>%
+  rownames_to_column("run_label") %>%
+  left_join(ms_sample_info, by = "run_label") %>%
+  dplyr::filter(!is.na(Condition))
+
+eigs <- pca$sdev^2
+pc1_var <- round(eigs[1] / sum(eigs) *100,1)
+pc2_var <- round(eigs[2] / sum(eigs) *100,1)
+
+# plot ----
+ggplot(pca_tibble,  
+       aes(x = PC1, y = PC2, fill = Condition, group = Condition, 
+           shape = as.factor(bio_rep))) +
+  geom_mark_ellipse(aes(color = Condition, group = Condition), 
+                    alpha = 0.25) +
+  geom_point(size = 4, color = "black") +
+  scale_shape_manual(values = c(21, 22, 23, 24), name = "Replicate") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))),
+         shape = guide_legend(override.aes=list(shape=c(21,22,23,24),
+                                                fill = "grey50"))) +
+  theme_linedraw() +
+  scale_color_manual(values = batlow_custom) +
+  scale_fill_manual(values = batlow_custom) +
+  theme(panel.grid.minor = element_blank()) +
+  scale_x_continuous(limits = c(-20,20)) +
+  scale_y_continuous(limits = c(-20,20)) +
+  xlab(paste0("PC1: ", pc1_var, "% variance")) +
+  ylab(paste0("PC2: ", pc2_var, "% variance")) 
+```
+
+![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
+# Remove outliers ----
+rem_ms_pca <- data.table(bio_rep = c(1,4,2,3,1),
+                         Condition = c("CS2", "CS3", "CSR", "HS2", "HSR"),
+                         label = "remove") %>%
+  left_join(ms_sample_info %>% 
+              dplyr::mutate(bio_rep = as.numeric(bio_rep)), 
+            by = c("bio_rep", "Condition")) %>%
+  pull(run_label)
+
+counts_MS_remBad <- counts_MS[!colnames(counts_MS) %in% rem_ms_pca]
+```
+
 2.  Normalized protein expression data was analyzed using the R limma
     (v. 3.52.4) package to identify differentially expressed proteins
     between control and cold or heat-stressed samples.
+
+> You can find the R code here:
+> [Rscripts/MS_analysis.R](../Rscripts/MS_analysis.R).
 
 ### Downstream data analysis
 
