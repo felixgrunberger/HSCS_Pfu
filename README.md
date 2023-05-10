@@ -104,7 +104,7 @@ Uncovering the temporal dynamics and regulatory networks of thermal
 stress response in a hyperthermophile using transcriptomics and
 proteomics
 
-Felix Gruenberger, Georg Schmid, Zubeir El-Ahmad, Martin Fenk, Katharina
+Felix Grünberger, Georg Schmid, Zubeir El-Ahmad, Martin Fenk, Katharina
 Vogl, Robert Reichelt, Winfried Hausner, Henning Urlaub, Christof Lenz,
 Dina Grohmann
 
@@ -113,5 +113,5 @@ bioRxiv 2023.05.02.539125; doi:
 
 ### License
 
-This project is licensed under the \[Name of License\]. See the
-`LICENSE` file for more details.
+This project is licensed under the MIT. See the [`LICENSE`](LICENSE)
+file for more details.
